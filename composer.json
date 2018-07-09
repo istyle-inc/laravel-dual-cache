@@ -1,0 +1,56 @@
+{
+  "name": "istyle-inc/laravel-dual-cache",
+  "description": "dual cache provider",
+  "keywords": [
+    "laravel",
+    "cache"
+  ],
+  "authors": [
+    {
+      "name": "yuuki takezawa",
+      "email": "takezaway@istyle.co.jp"
+    }
+  ],
+  "license": "MIT",
+  "require": {
+    "php": ">=7.0.0",
+    "illuminate/cache": "5.5.*|5.6.*",
+    "illuminate/session": "5.5.*|5.6.*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^6.0",
+    "satooshi/php-coveralls": "*",
+    "phploc/phploc": "*",
+    "pdepend/pdepend" : "^2.2.4",
+    "phpmd/phpmd": "@stable",
+    "friendsofphp/php-cs-fixer": "^2.0",
+    "sensiolabs/security-checker": "^4.1.8",
+    "mockery/mockery": "^1.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Istyle\\LaravelDualCache\\": "src/"
+    }
+  },
+  "scripts": {
+    "test": [
+      "php vendor/bin/phpunit"
+    ],
+    "cs": [
+      "php vendor/bin/php-cs-fixer fix"
+    ],
+    "scrutinizer_test": [
+      "php vendor/bin/phpunit --coverage-clover=coverage.clover",
+      "wget https://scrutinizer-ci.com/ocular.phar",
+      "php ocular.phar code-coverage:upload --format=php-clover coverage.clover"
+    ]
+  },
+  "minimum-stability": "stable",
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Istyle\\LaravelDualCache\\DualCacheServiceProvider"
+      ]
+    }
+  }
+}
