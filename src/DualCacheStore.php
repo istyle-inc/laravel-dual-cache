@@ -6,7 +6,6 @@ namespace Istyle\LaravelDualCache;
 use Illuminate\Cache\TaggableStore;
 use Illuminate\Contracts\Cache\Store;
 use Illuminate\Cache\RetrievesMultipleKeys;
-use Istyle\LaravelDualCache\Exception\DualCacheException;
 
 /**
  * Class DualCacheStore
@@ -18,22 +17,25 @@ class DualCacheStore extends TaggableStore implements Store
     /** @var Store */
     protected $primaryStore;
 
-    /** @var callable */
+    /** @var Store */
     protected $secondaryStore;
 
-    /** @var Store */
-    protected $secondaryCacheStorage = null;
+    /** @var DualCacheHandlerInterface */
+    protected $cacheHandler;
 
     /**
-     * FusionCacheStore constructor.
-     *
-     * @param Store    $primaryStore
-     * @param callable $secondaryStore
+     * @param Store                     $primaryStore
+     * @param Store                     $secondaryStore
+     * @param DualCacheHandlerInterface $cacheHandler
      */
-    public function __construct(Store $primaryStore, callable $secondaryStore)
-    {
+    public function __construct(
+        Store $primaryStore,
+        Store $secondaryStore,
+        DualCacheHandlerInterface $cacheHandler
+    ) {
         $this->primaryStore = $primaryStore;
         $this->secondaryStore = $secondaryStore;
+        $this->cacheHandler = $cacheHandler;
     }
 
     /**
@@ -44,12 +46,15 @@ class DualCacheStore extends TaggableStore implements Store
      */
     public function get($key)
     {
-        return $this->handleError(function () use ($key) {
+        return $this->cacheHandler->handle(function () use ($key) {
             $primaryResult = $this->primaryStore->get($key);
             if (!is_null($primaryResult)) {
                 return $primaryResult;
             }
-            $secondaryResult = $this->secondaryStore()->get($key);
+
+            return null;
+        }, function () use ($key) {
+            $secondaryResult = $this->secondaryStore->get($key);
             if (!is_null($secondaryResult)) {
                 return $secondaryResult;
             }
@@ -67,9 +72,9 @@ class DualCacheStore extends TaggableStore implements Store
      */
     public function put($key, $value, $minutes)
     {
-        $this->handleError(function () use ($key, $value, $minutes) {
+        $this->cacheHandler->handle(function () use ($key, $value, $minutes) {
             $this->primaryStore->put($key, $value, $minutes);
-            $this->secondaryStore()->put($key, $value, $minutes);
+            $this->secondaryStore->put($key, $value, $minutes);
         }, function () use ($key) {
             $this->forget($key);
         });
@@ -86,9 +91,9 @@ class DualCacheStore extends TaggableStore implements Store
     {
         $previousValue = $this->get($key);
 
-        return $this->handleError(function () use ($key, $value) {
+        return $this->cacheHandler->handle(function () use ($key, $value) {
             $primaryResult = $this->primaryStore->increment($key, $value);
-            $secondaryResult = $this->secondaryStore()->increment($key, $value);
+            $secondaryResult = $this->secondaryStore->increment($key, $value);
             if (!is_null($primaryResult)) {
                 return $primaryResult;
             }
@@ -117,9 +122,9 @@ class DualCacheStore extends TaggableStore implements Store
     {
         $previousValue = $this->get($key);
 
-        return $this->handleError(function () use ($key, $value) {
+        return $this->cacheHandler->handle(function () use ($key, $value) {
             $primaryResult = $this->primaryStore->decrement($key, $value);
-            $secondaryResult = $this->secondaryStore()->decrement($key, $value);
+            $secondaryResult = $this->secondaryStore->decrement($key, $value);
             if (!is_null($primaryResult)) {
                 return $primaryResult;
             }
@@ -156,9 +161,9 @@ class DualCacheStore extends TaggableStore implements Store
      */
     public function forget($key)
     {
-        return $this->handleError(function () use ($key) {
+        return $this->cacheHandler->handle(function () use ($key) {
             $primaryResult = $this->primaryStore->forget($key);
-            $secondaryResult = $this->secondaryStore()->forget($key);
+            $secondaryResult = $this->secondaryStore->forget($key);
             if ($primaryResult) {
                 return $primaryResult;
             }
@@ -176,9 +181,9 @@ class DualCacheStore extends TaggableStore implements Store
      */
     public function flush()
     {
-        $this->handleError(function () {
+        $this->cacheHandler->handle(function () {
             $this->primaryStore->flush();
-            $this->secondaryStore()->flush();
+            $this->secondaryStore->flush();
         });
     }
 
@@ -186,39 +191,8 @@ class DualCacheStore extends TaggableStore implements Store
      * {@inheritdoc}
      * @codeCoverageIgnore
      */
-    public function getPrefix()
+    public function getPrefix(): string
     {
         return '';
-    }
-
-    /**
-     * @return Store
-     */
-    private function secondaryStore(): Store
-    {
-        if (\is_null($this->secondaryCacheStorage)) {
-            $this->secondaryCacheStorage = call_user_func($this->secondaryStore);
-        }
-
-        return $this->secondaryCacheStorage;
-    }
-
-    /**
-     * @param callable      $function
-     * @param callable|null $secondary
-     *
-     * @return mixed
-     * @throws \Throwable
-     */
-    protected function handleError(callable $function, callable $secondary = null)
-    {
-        try {
-            return call_user_func($function);
-        } catch (\Exception $e) {
-            if (is_callable($secondary)) {
-                return call_user_func($secondary);
-            }
-            throw new DualCacheException($e->getMessage(), $e->getCode(), $e);
-        }
     }
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 use Istyle\LaravelDualCache\DualCacheStore;
+use Istyle\LaravelDualCache\DualCacheHandler;
 
 final class DualCacheStoreTest extends TestCase
 {
@@ -25,9 +26,8 @@ final class DualCacheStoreTest extends TestCase
     {
         return new DualCacheStore(
             new \Illuminate\Cache\ArrayStore(),
-            function () {
-                return new \Illuminate\Cache\NullStore();
-            }
+            new \Illuminate\Cache\NullStore(),
+            new DualCacheHandler()
         );
     }
 
@@ -38,9 +38,8 @@ final class DualCacheStoreTest extends TestCase
     {
         return new  DualCacheStore(
             new \Illuminate\Cache\NullStore(),
-            function () {
-                return new \Illuminate\Cache\ArrayStore();
-            }
+            new \Illuminate\Cache\ArrayStore(),
+            new DualCacheHandler()
         );
     }
 
@@ -71,7 +70,7 @@ final class DualCacheStoreTest extends TestCase
     public function testShouldReturnCacheValuesForSecondary()
     {
         $this->secondary->put('testing:secondary', 123, 60);
-        $this->assertSame(123, $this->secondary->get('testing:secondary'));
+        $this->assertSame(null, $this->secondary->get('testing:secondary'));
     }
 
     /**
@@ -125,11 +124,10 @@ final class DualCacheStoreTest extends TestCase
         $partialMock->shouldReceive('put')->andThrow(\Exception::class, 'throw exception from mock');
         $cache = new DualCacheStore(
             $partialMock,
-            function () use ($arrayCache) {
-                return $arrayCache;
-            }
+            $arrayCache,
+            new DualCacheHandler()
         );
-        static::assertSame(1234, $arrayCache->get('testing:throwable'));
+        $this->assertSame(1234, $arrayCache->get('testing:throwable'));
         try {
             $cache->put('testing:throwable', 'exception', 120);
         } catch (\Exception $e) {
@@ -147,9 +145,8 @@ final class DualCacheStoreTest extends TestCase
         $secondaryMock = clone $primaryMock;
         $cache = new DualCacheStore(
             $primaryMock,
-            function () use ($secondaryMock) {
-                return $secondaryMock;
-            }
+            $secondaryMock,
+            new DualCacheHandler()
         );
         $this->assertNull($cache->increment('testing:increment', 200));
     }
@@ -164,11 +161,43 @@ final class DualCacheStoreTest extends TestCase
         $secondaryMock = clone $primaryMock;
         $cache = new DualCacheStore(
             $primaryMock,
-            function () use ($secondaryMock) {
-                return $secondaryMock;
-            }
+            $secondaryMock,
+            new DualCacheHandler()
         );
         $this->assertNull($cache->decrement('testing:decrement', 200));
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @expectedException Istyle\LaravelDualCache\Exception\DualCacheException
+     */
+    public function testShouldThrowDualCacheException()
+    {
+        $partialMock = Mockery::mock(\Illuminate\Cache\ArrayStore::class)->makePartial();
+        $partialMock->shouldReceive('forget')->andThrow(\Exception::class, 'throw exception from mock');
+        $partialSecondaryMock = Mockery::mock(\Illuminate\Cache\ArrayStore::class)->makePartial();
+        $partialSecondaryMock->shouldReceive('forget')->andThrow(\Exception::class, 'throw exception from mock');
+        $cache = new DualCacheStore(
+            $partialMock,
+            $partialSecondaryMock,
+            new DualCacheHandler()
+        );
+       $cache->forget('testing:primary:incr');
+    }
+
+    /**
+     * @runInSeparateProcess
+     */
+    public function testShouldThrowDualCacheExceptions()
+    {
+        $partialMock = Mockery::mock(\Illuminate\Cache\ArrayStore::class)->makePartial();
+        $partialMock->shouldReceive('get')->andThrow(\Exception::class, 'throw exception from mock');
+        $cache = new DualCacheStore(
+            $partialMock,
+            new \Illuminate\Cache\ArrayStore(),
+            new DualCacheHandler()
+        );
+        $this->assertNull($cache->get('testing:primary'));
     }
 
     protected function tearDown()

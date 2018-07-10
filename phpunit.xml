@@ -11,13 +11,17 @@
          syntaxCheck="false"
 >
     <testsuites>
-        <testsuite name="Confluent KSQL Client Test Suite">
+        <testsuite name="Laravel Dual Cache Test Suite">
             <directory suffix=".php">./tests</directory>
         </testsuite>
     </testsuites>
     <filter>
         <whitelist processUncoveredFilesFromWhitelist="true">
             <directory suffix=".php">./src</directory>
+            <exclude>
+                <directory>./src/config</directory>
+                <file>./src/DualCacheServiceProvider.php</file>
+            </exclude>
         </whitelist>
     </filter>
     <logging>

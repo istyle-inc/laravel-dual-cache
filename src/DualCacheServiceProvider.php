@@ -28,7 +28,10 @@ final class DualCacheServiceProvider extends ServiceProvider
     {
         $this->app['session']->extend('dual-session', function ($app) {
             $minutes = $app['config']['session.lifetime'];
-            return new CacheBasedSessionHandler(clone $this->app['cache']->driver('fusion-cache'), $minutes);
+            return new CacheBasedSessionHandler(
+                clone $this->app['cache']->driver('dual-session'),
+                $minutes
+            );
         });
     }
 
@@ -43,9 +46,8 @@ final class DualCacheServiceProvider extends ServiceProvider
             return new Repository(
                 new DualCacheStore(
                     $cacheManager->store($config['primary'])->getStore(),
-                    function () use ($cacheManager, $config) {
-                        return $cacheManager->store($config['secondary'])->getStore();
-                    }
+                    $cacheManager->store($config['secondary'])->getStore(),
+                    new DualCacheHandler()
                 )
             );
         });
