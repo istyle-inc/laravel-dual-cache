@@ -2,7 +2,9 @@
 
 ## Usage
 
-cache and session.
+added config/cache.php
+
+### example
 
 ```php
 'your-cache-driver-name' => [
@@ -11,4 +13,3 @@ cache and session.
     'secondary' => 'file',
 ],
 ```
-

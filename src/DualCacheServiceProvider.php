@@ -22,20 +22,6 @@ final class DualCacheServiceProvider extends ServiceProvider
     }
 
     /**
-     * {@inheritdoc}
-     */
-    public function register()
-    {
-        $this->app['session']->extend('dual-session', function ($app) {
-            $minutes = $app['config']['session.lifetime'];
-            return new CacheBasedSessionHandler(
-                clone $this->app['cache']->driver('dual-session'),
-                $minutes
-            );
-        });
-    }
-
-    /**
      * register fusion cache
      */
     public function registerCacheDriver()

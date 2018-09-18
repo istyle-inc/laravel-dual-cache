@@ -70,7 +70,7 @@ final class DualCacheStoreTest extends TestCase
     public function testShouldReturnCacheValuesForSecondary()
     {
         $this->secondary->put('testing:secondary', 123, 60);
-        $this->assertSame(null, $this->secondary->get('testing:secondary'));
+        $this->assertSame(123, $this->secondary->get('testing:secondary'));
     }
 
     /**
@@ -186,7 +186,7 @@ final class DualCacheStoreTest extends TestCase
     }
 
     /**
-     * @runInSeparateProcess
+     * @expectedException \Exception
      */
     public function testShouldThrowDualCacheExceptions()
     {
@@ -197,7 +197,7 @@ final class DualCacheStoreTest extends TestCase
             new \Illuminate\Cache\ArrayStore(),
             new DualCacheHandler()
         );
-        $this->assertNull($cache->get('testing:primary'));
+        $cache->get('testing:primary');
     }
 
     protected function tearDown()

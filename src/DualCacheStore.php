@@ -46,21 +46,16 @@ class DualCacheStore extends TaggableStore implements Store
      */
     public function get($key)
     {
-        return $this->cacheHandler->handle(function () use ($key) {
-            $primaryResult = $this->primaryStore->get($key);
-            if (!is_null($primaryResult)) {
-                return $primaryResult;
-            }
+        $primaryResult = $this->primaryStore->get($key);
+        if (!is_null($primaryResult)) {
+            return $primaryResult;
+        }
+        $secondaryResult = $this->secondaryStore->get($key);
+        if (!is_null($secondaryResult)) {
+            return $secondaryResult;
+        }
 
-            return null;
-        }, function () use ($key) {
-            $secondaryResult = $this->secondaryStore->get($key);
-            if (!is_null($secondaryResult)) {
-                return $secondaryResult;
-            }
-
-            return null;
-        });
+        return null;
     }
 
     /**
